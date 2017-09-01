@@ -141,8 +141,9 @@ func DecodeAddress(addr string, defaultNet *chaincfg.Params) (Address, error) {
 	// a segwit address.
 	oneIndex := strings.LastIndexByte(addr, '1')
 	if oneIndex > 1 {
-		prefix := addr[:oneIndex+1]
-		if chaincfg.IsBech32SegwitPrefix(prefix) {
+		// The HRP is everything before the found '1'.
+		hrp := strings.ToLower(addr[:oneIndex])
+		if hrp == defaultNet.Bech32HRPSegwit {
 			witnessVer, witnessProg, err := decodeSegWitAddress(addr)
 			if err != nil {
 				return nil, err
@@ -153,9 +154,6 @@ func DecodeAddress(addr string, defaultNet *chaincfg.Params) (Address, error) {
 			if witnessVer != 0 {
 				return nil, UnsupportedWitnessVerError(witnessVer)
 			}
-
-			// The HRP is everything before the found '1'.
-			hrp := prefix[:len(prefix)-1]
 
 			switch len(witnessProg) {
 			case 20:
@@ -188,8 +186,8 @@ func DecodeAddress(addr string, defaultNet *chaincfg.Params) (Address, error) {
 	}
 	switch len(decoded) {
 	case ripemd160.Size: // P2PKH or P2SH
-		isP2PKH := chaincfg.IsPubKeyHashAddrID(netID)
-		isP2SH := chaincfg.IsScriptHashAddrID(netID)
+		isP2PKH := netID == defaultNet.PubKeyHashAddrID
+		isP2SH := netID == defaultNet.ScriptHashAddrID
 		switch hash160 := decoded; {
 		case isP2PKH && isP2SH:
 			return nil, ErrAddressCollision
